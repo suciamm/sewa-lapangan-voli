@@ -4,7 +4,7 @@ import (
 	"net/http"
 
 	"sewa-lapangan-voli/config"
-	"sewa-lapangan-voli/config/db"
+	sqlc_db "sewa-lapangan-voli/db"
 
 	"github.com/gin-gonic/gin"
 )
@@ -28,7 +28,7 @@ func RegisterController(c *gin.Context) {
 		return
 	}
 
-	q := db.New(config.DB)
+	q := sqlc_db.New(config.DB)
 	result, err := RegisterService(c.Request.Context(), q, req)
 	if err != nil {
 		config.RespondError(c, http.StatusBadRequest, err.Error())
@@ -60,7 +60,7 @@ func VerifyEmailController(c *gin.Context) {
 		return
 	}
 
-	q := db.New(config.DB)
+	q := sqlc_db.New(config.DB)
 	if err := VerifyEmailService(c.Request.Context(), q, req); err != nil {
 		config.RespondError(c, http.StatusBadRequest, err.Error())
 		return
@@ -84,7 +84,7 @@ func LoginController(c *gin.Context) {
 		return
 	}
 
-	q := db.New(config.DB)
+	q := sqlc_db.New(config.DB)
 	result, err := LoginService(c.Request.Context(), q, req)
 	if err != nil {
 		config.RespondError(c, http.StatusUnauthorized, err.Error())
@@ -109,7 +109,7 @@ func RefreshTokenController(c *gin.Context) {
 		return
 	}
 
-	q := db.New(config.DB)
+	q := sqlc_db.New(config.DB)
 	result, err := RefreshTokenService(c.Request.Context(), q, req)
 	if err != nil {
 		config.RespondError(c, http.StatusUnauthorized, err.Error())
@@ -134,7 +134,7 @@ func LogoutController(c *gin.Context) {
 		return
 	}
 
-	q := db.New(config.DB)
+	q := sqlc_db.New(config.DB)
 	if err := LogoutService(c.Request.Context(), q, req); err != nil {
 		config.RespondError(c, http.StatusInternalServerError, err.Error())
 		return

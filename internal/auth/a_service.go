@@ -3,12 +3,13 @@ package auth
 import (
 	"context"
 	"crypto/rand"
+	"database/sql"
 	"encoding/hex"
 	"errors"
 	"time"
 
 	"sewa-lapangan-voli/config"
-	"sewa-lapangan-voli/db"
+	sqlc_db "sewa-lapangan-voli/db"
 
 	"golang.org/x/crypto/bcrypt"
 )
@@ -17,10 +18,7 @@ import (
 // REGISTER
 // ─────────────────────────────────────────
 
-// RegisterService memvalidasi input, membuat user baru, dan
-// mengirim email verifikasi (khusus penyewa).
-// Untuk owner: status tetap 'pending' sampai upload dokumen & di-approve.
-func RegisterService(ctx context.Context, q *db.Queries, req RegisterRequest) (UserResponse, error) {
+func RegisterService(ctx context.Context, q *sqlc_db.Queries, req RegisterRequest) (UserResponse, error) {
 	// Cek email sudah terdaftar
 	existing, err := q.GetUserByEmail(ctx, req.Email)
 	if err == nil && existing.ID > 0 {
@@ -34,13 +32,13 @@ func RegisterService(ctx context.Context, q *db.Queries, req RegisterRequest) (U
 	}
 
 	// Buat user — status 'pending' untuk semua role baru
-	result, err := q.CreateUser(ctx, db.CreateUserParams{
+	result, err := q.CreateUser(ctx, sqlc_db.CreateUserParams{
 		Name:     req.Name,
 		Email:    req.Email,
 		Password: string(hashed),
 		Phone:    toNullString(req.Phone),
-		Role:     req.Role,
-		Status:   "pending",
+		Role:     sqlc_db.UsersRole(req.Role),
+		Status:   sqlc_db.UsersStatus("pending"),
 	})
 	if err != nil {
 		return UserResponse{}, errors.New("gagal membuat akun")
@@ -59,7 +57,7 @@ func RegisterService(ctx context.Context, q *db.Queries, req RegisterRequest) (U
 		}
 
 		expiresAt := time.Now().Add(24 * time.Hour)
-		if err := q.CreateEmailVerification(ctx, db.CreateEmailVerificationParams{
+		if err := q.CreateEmailVerification(ctx, sqlc_db.CreateEmailVerificationParams{
 			UserID:    userID,
 			Token:     token,
 			ExpiresAt: expiresAt,
@@ -86,20 +84,17 @@ func RegisterService(ctx context.Context, q *db.Queries, req RegisterRequest) (U
 // VERIFY EMAIL
 // ─────────────────────────────────────────
 
-// VerifyEmailService memvalidasi token dan mengaktifkan akun penyewa.
-func VerifyEmailService(ctx context.Context, q *db.Queries, req VerifyEmailRequest) error {
+func VerifyEmailService(ctx context.Context, q *sqlc_db.Queries, req VerifyEmailRequest) error {
 	verification, err := q.GetEmailVerificationByToken(ctx, req.Token)
 	if err != nil {
 		return errors.New("token tidak valid atau sudah kadaluarsa")
 	}
 
-	// Tandai token sebagai sudah digunakan
 	if err := q.MarkEmailVerificationUsed(ctx, req.Token); err != nil {
 		return errors.New("gagal memverifikasi email")
 	}
 
-	// Aktifkan user
-	if err := q.UpdateUserStatus(ctx, db.UpdateUserStatusParams{
+	if err := q.UpdateUserStatus(ctx, sqlc_db.UpdateUserStatusParams{
 		Status: "active",
 		ID:     verification.UserID,
 	}); err != nil {
@@ -113,19 +108,16 @@ func VerifyEmailService(ctx context.Context, q *db.Queries, req VerifyEmailReque
 // LOGIN
 // ─────────────────────────────────────────
 
-// LoginService memvalidasi kredensial dan mengembalikan access + refresh token.
-func LoginService(ctx context.Context, q *db.Queries, req LoginRequest) (LoginResponse, error) {
+func LoginService(ctx context.Context, q *sqlc_db.Queries, req LoginRequest) (LoginResponse, error) {
 	user, err := q.GetUserByEmail(ctx, req.Email)
 	if err != nil {
 		return LoginResponse{}, errors.New("email atau password salah")
 	}
 
-	// Cek password
 	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(req.Password)); err != nil {
 		return LoginResponse{}, errors.New("email atau password salah")
 	}
 
-	// Cek status akun
 	switch user.Status {
 	case "pending":
 		if user.Role == "penyewa" {
@@ -136,21 +128,18 @@ func LoginService(ctx context.Context, q *db.Queries, req LoginRequest) (LoginRe
 		return LoginResponse{}, errors.New("akun kamu telah dinonaktifkan")
 	}
 
-	// Generate access token (JWT)
-	accessToken, err := config.GenerateAccessToken(user.ID, user.Role)
+	accessToken, err := config.GenerateAccessToken(user.ID, string(user.Role))
 	if err != nil {
 		return LoginResponse{}, errors.New("gagal membuat access token")
 	}
 
-	// Generate refresh token
 	refreshToken, err := generateSecureToken()
 	if err != nil {
 		return LoginResponse{}, errors.New("gagal membuat refresh token")
 	}
 
-	// Simpan refresh token ke DB
-	expiresAt := time.Now().Add(30 * 24 * time.Hour) // 30 hari
-	if err := q.CreateRefreshToken(ctx, db.CreateRefreshTokenParams{
+	expiresAt := time.Now().Add(30 * 24 * time.Hour)
+	if err := q.CreateRefreshToken(ctx, sqlc_db.CreateRefreshTokenParams{
 		UserID:    user.ID,
 		Token:     refreshToken,
 		ExpiresAt: expiresAt,
@@ -166,8 +155,8 @@ func LoginService(ctx context.Context, q *db.Queries, req LoginRequest) (LoginRe
 			Name:      user.Name,
 			Email:     user.Email,
 			Phone:     nullStringToString(user.Phone),
-			Role:      user.Role,
-			Status:    user.Status,
+			Role:      string(user.Role),
+			Status:    string(user.Status),
 			CreatedAt: user.CreatedAt,
 		},
 	}, nil
@@ -177,8 +166,7 @@ func LoginService(ctx context.Context, q *db.Queries, req LoginRequest) (LoginRe
 // REFRESH TOKEN
 // ─────────────────────────────────────────
 
-// RefreshTokenService menukar refresh token lama dengan access token baru.
-func RefreshTokenService(ctx context.Context, q *db.Queries, req RefreshTokenRequest) (RefreshResponse, error) {
+func RefreshTokenService(ctx context.Context, q *sqlc_db.Queries, req RefreshTokenRequest) (RefreshResponse, error) {
 	rt, err := q.GetRefreshToken(ctx, req.RefreshToken)
 	if err != nil {
 		return RefreshResponse{}, errors.New("refresh token tidak valid atau sudah kadaluarsa")
@@ -189,7 +177,7 @@ func RefreshTokenService(ctx context.Context, q *db.Queries, req RefreshTokenReq
 		return RefreshResponse{}, errors.New("user tidak ditemukan")
 	}
 
-	accessToken, err := config.GenerateAccessToken(user.ID, user.Role)
+	accessToken, err := config.GenerateAccessToken(user.ID, string(user.Role))
 	if err != nil {
 		return RefreshResponse{}, errors.New("gagal membuat access token")
 	}
@@ -201,8 +189,7 @@ func RefreshTokenService(ctx context.Context, q *db.Queries, req RefreshTokenReq
 // LOGOUT
 // ─────────────────────────────────────────
 
-// LogoutService menghapus refresh token dari DB (invalidate sesi).
-func LogoutService(ctx context.Context, q *db.Queries, req LogoutRequest) error {
+func LogoutService(ctx context.Context, q *sqlc_db.Queries, req LogoutRequest) error {
 	if err := q.DeleteRefreshToken(ctx, req.RefreshToken); err != nil {
 		return errors.New("gagal logout")
 	}
@@ -221,14 +208,14 @@ func generateSecureToken() (string, error) {
 	return hex.EncodeToString(b), nil
 }
 
-func toNullString(s string) db.NullString {
+func toNullString(s string) sql.NullString {
 	if s == "" {
-		return db.NullString{Valid: false}
+		return sql.NullString{Valid: false}
 	}
-	return db.NullString{String: s, Valid: true}
+	return sql.NullString{String: s, Valid: true}
 }
 
-func nullStringToString(ns db.NullString) string {
+func nullStringToString(ns sql.NullString) string {
 	if !ns.Valid {
 		return ""
 	}
