@@ -1,0 +1,72 @@
+sewa-lapangan-backend/
+│
+├── cmd/
+│   └── main.go                  # Entry point
+│
+├── config/
+│   ├── db.go                    # Koneksi MySQL + jalankan migrate
+│   ├── env.go                   # Load .env
+│   └── response.go              # Helper RespondError, RespondSuccess
+│
+├── migrations/                  # File SQL migrasi (golang-migrate)
+│   ├── 000001_create_users.up.sql
+│   ├── 000001_create_users.down.sql
+│   ├── 000002_create_lapangan.up.sql
+│   └── ...
+│
+├── db/                          # Semua output SQLC (jangan diedit manual)
+│   ├── db.go                    # Setup *Queries dari *sql.DB
+│   ├── models.go                # Struct hasil generate (Users, Lapangan, dll)
+│   ├── users.sql.go             # Method query users
+│   ├── lapangan.sql.go          # Method query lapangan
+│   └── booking.sql.go           # Method query booking
+│
+├── queries/                     # File .sql yang kamu tulis sendiri (input SQLC)
+│   ├── users.sql
+│   ├── lapangan.sql
+│   └── booking.sql
+│
+├── internal/
+│   ├── users/
+│   │   ├── controller.go        # Gin handler (binding, response)
+│   │   ├── service.go           # Business logic
+│   │   └── model.go             # Struct request/response (bukan DB)
+│   │
+│   ├── lapangan/
+│   │   ├── controller.go
+│   │   ├── service.go
+│   │   └── model.go
+│   │
+│   └── booking/
+│       ├── controller.go
+│       ├── service.go
+│       └── model.go
+│
+├── middleware/
+│   └── auth.go                  # JWT middleware
+│
+├── router/
+│   └── router.go                # Semua route Gin
+│
+├── schema.sql                   # Gabungan DDL semua tabel (input SQLC)
+├── sqlc.yaml                    # Config SQLC
+├── .env
+└── go.mod
+
+
+
+1. pastikan atbelnya sudah ada di schema
+2. running = sqlc generate
+3. install ulang dependensinya =
+        go get github.com/gin-gonic/gin
+        go get github.com/golang-jwt/jwt/v5
+        go get github.com/golang-migrate/migrate/v4
+        go get github.com/golang-migrate/migrate/v4/database/mysql
+        go get github.com/go-sql-driver/mysql
+        go get github.com/joho/godotenv
+        go get golang.org/x/crypto
+        go get github.com/sqlc-dev/sqlc
+        go: added github.com/sqlc-dev/sqlc v1.31.1
+        go: upgraded google.golang.org/protobuf v1.36.10 => v1.36.11
+
+4. running = go run cmd/main.go
