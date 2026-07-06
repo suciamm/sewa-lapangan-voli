@@ -75,23 +75,14 @@ const routes = [
     meta: { requiresAuth: true, role: 'penyewa' }
   },
   {
-    path: '/penyewa/booking-aktif',
-    name: 'PenyewaBookingAktif',
-    component: {
-      render() {
-        return h(Layout, null, {
-          default: () => h('div', { class: 'page' }, [
-            h('h1', 'Booking Aktif'),
-            h('p', 'Halaman ini menampilkan booking yang sedang aktif.')
-          ])
-        })
-      }
-    },
+    path: '/penyewa/bookings',
+    name: 'PenyewaBookings',
+    component: PenyewaBookings,
     meta: { requiresAuth: true, role: 'penyewa' }
   },
   {
-    path: '/penyewa/beri-rating',
-    name: 'PenyewaBeriRating',
+    path: '/penyewa/ratings',
+    name: 'PenyewaRatings',
     component: {
       render() {
         return h(Layout, null, {
