@@ -1,0 +1,19 @@
+Berikut detail kolom lengkap tiap tabel:
+users
+FieldTipeKeteranganidbigint PKnamevarcharemailvarchar, uniquepasswordvarcharphonevarcharroleenum(superuser, owner, penyewa)is_verifiedboolean, default falsemenggantikan tabel owner_verificationsstatusenum(active, inactive)created_attimestamp
+refresh_tokens
+FieldTipeKeteranganidbigint PKuser_idbigint FK → userstokenvarchar, uniqueexpires_attimestampcreated_attimestamp
+courts
+FieldTipeKeteranganidbigint PKowner_idbigint FK → usersnamevarchardescriptiontextaddresstextcityvarcharprice_per_hourdecimal(12,2)harga tunggal, tidak dibagi per sesi/haristatusenum(active, inactive, maintenance)avg_ratingdecimal(3,2)total_reviewsint, default 0created_attimestamp
+court_images
+FieldTipeKeteranganidbigint PKcourt_idbigint FK → courtsimage_urlvarcharis_primaryboolean, default falsecreated_attimestamp
+bookings
+FieldTipeKeteranganidbigint PKcourt_idbigint FK → courtspenyewa_idbigint FK → usersbooking_datedatestart_timetimeend_timetimeduration_hoursinttotal_pricedecimal(12,2)statusenum(pending_payment, paid, active, completed, cancelled)tanpa status reschedule_pendingcreated_attimestamp
+payments
+FieldTipeKeteranganidbigint PKbooking_idbigint FK → bookingsmidtrans_order_idvarchar, uniquemidtrans_tx_idvarcharamountdecimal(12,2)fee_amountdecimal(12,2)dihitung dari fee_percent saat pembayarannet_to_ownerdecimal(12,2)payment_methodvarcharstatusenum(pending, settlement, expire, failure)paid_attimestampcreated_attimestamp
+platform_settings
+FieldTipeKeteranganidbigint PKfee_percentdecimal(5,2)satu baris konfigurasi, tanpa histori versiupdated_attimestamp
+court_reviews
+FieldTipeKeteranganidbigint PKbooking_idbigint FK → bookingscourt_idbigint FK → courtspenyewa_idbigint FK → usersratingtinyint(1-5)commenttextcreated_attimestamptanpa owner_reply, bisa jadi fitur tambahan
+notifications
+FieldTipeKeteranganidbigint PKuser_idbigint FK → userstypeenum(booking_confirmed, payment_success, payment_failed)tanpa tipe terkait rescheduletitlevarcharbodytextref_idbigintid booking terkaitis_readboolean, default falsecreated_attimestamp

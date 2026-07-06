@@ -1,0 +1,9 @@
+DROP TABLE IF EXISTS notifications;
+DROP TABLE IF EXISTS court_reviews;
+DROP TABLE IF EXISTS payments;
+DROP TABLE IF EXISTS bookings;
+DROP TABLE IF EXISTS court_images;
+DROP TABLE IF EXISTS courts;
+DROP TABLE IF EXISTS platform_settings;
+DROP TABLE IF EXISTS refresh_tokens;
+DROP TABLE IF EXISTS users;
