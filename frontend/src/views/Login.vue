@@ -41,8 +41,21 @@ const handleLogin = async () => {
   loading.value = true
   try {
     const response = await api.post('/auth/login', form.value)
-    authStore.setAuth(response.data.data.token, response.data.data.user)
-    router.push('/')
+    // Note: backend uses "access_token", not "token"!
+    const token = response.data.data.access_token
+    const user = response.data.data.user
+    authStore.setAuth(token, user)
+    
+    // Redirect based on role
+    if (user.role === 'owner') {
+      router.push('/owner/dashboard')
+    } else if (user.role === 'penyewa') {
+      router.push('/penyewa/dashboard')
+    } else if (user.role === 'superuser') {
+      router.push('/superuser/dashboard')
+    } else {
+      router.push('/')
+    }
   } catch (error) {
     alert('Login gagal: ' + (error.response?.data?.message || error.message))
   } finally {

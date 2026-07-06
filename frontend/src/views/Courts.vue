@@ -1,16 +1,34 @@
 <template>
-  <div class="courts">
+  <Layout v-if="isPenyewa">
+    <div class="courts-page">
+      <h1>Daftar Lapangan</h1>
+      <div class="courts-grid">
+        <div v-for="court in courts" :key="court.id" class="court-card">
+          <div class="court-image">
+            <img :src="court.image || placeholderImg" :alt="court.name">
+          </div>
+          <div class="court-info">
+            <h3>{{ court.name }}</h3>
+            <p class="location">{{ court.city || 'Lokasi tidak ditentukan' }}</p>
+            <p class="price">Rp {{ formatPrice(court.price_per_hour) }} / jam</p>
+            <button class="btn-book" @click="bookCourt(court)">Pesan Sekarang</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </Layout>
+  <div v-else class="public-courts">
     <h1>Daftar Lapangan</h1>
     <div class="courts-grid">
       <div v-for="court in courts" :key="court.id" class="court-card">
         <div class="court-image">
-          <img :src="court.image || 'https://coresg-normal.trae.ai/api/ide/v1/text_to_image?prompt=volleyball%20court%20indoor%20professional&image_size=square_hd'" :alt="court.name">
+          <img :src="court.image || placeholderImg" :alt="court.name">
         </div>
         <div class="court-info">
           <h3>{{ court.name }}</h3>
-          <p class="location">{{ court.location }}</p>
-          <p class="price">Rp {{ court.pricePerHour }} / jam</p>
-          <button class="btn-book" @click="bookCourt(court)">Pesan Sekarang</button>
+          <p class="location">{{ court.city || 'Lokasi tidak ditentukan' }}</p>
+          <p class="price">Rp {{ formatPrice(court.price_per_hour) }} / jam</p>
+          <button class="btn-book" @click="router.push('/login')">Login untuk Memesan</button>
         </div>
       </div>
     </div>
@@ -18,12 +36,19 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import api from '@/api'
 import { useRouter } from 'vue-router'
+import { useAuthStore } from '@/stores/auth'
+import Layout from '@/components/Layout.vue'
 
 const router = useRouter()
+const authStore = useAuthStore()
 const courts = ref([])
+const placeholderImg = 'https://coresg-normal.trae.ai/api/ide/v1/text_to_image?prompt=volleyball%20court%20indoor%20professional&image_size=square_hd'
+
+const isPenyewa = computed(() => authStore.user?.role === 'penyewa')
+const formatPrice = (num) => new Intl.NumberFormat('id-ID').format(num)
 
 const fetchCourts = async () => {
   try {
@@ -35,7 +60,7 @@ const fetchCourts = async () => {
 }
 
 const bookCourt = (court) => {
-  router.push(`/bookings?courtId=${court.id}`)
+  alert('Fitur pemesanan akan segera tersedia!')
 }
 
 onMounted(() => {
@@ -44,11 +69,18 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.courts h1 {
+.courts-page h1,
+.public-courts h1 {
   margin-bottom: 2.5rem;
   color: #1e3a5f;
   font-weight: 800;
   font-size: 2.2rem;
+}
+
+.public-courts {
+  padding: 3rem 2rem;
+  max-width: 1280px;
+  margin: 0 auto;
 }
 
 .courts-grid {

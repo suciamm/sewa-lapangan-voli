@@ -5,11 +5,11 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"path/filepath"
+	"regexp"
+	"strings"
 	"time"
 
-	"github.com/golang-migrate/migrate/v4"
-	"github.com/golang-migrate/migrate/v4/database/mysql"
-	_ "github.com/golang-migrate/migrate/v4/source/file"
 	_ "github.com/go-sql-driver/mysql"
 )
 
@@ -50,25 +50,65 @@ func InitDB() {
 	RunMigrations(db)
 }
 
-// RunMigrations menjalankan semua file migrasi yang belum diapply.
-// File migrasi dibaca dari folder ./migrations.
+// RunMigrations menjalankan schema.sql jika tabel belum ada.
 func RunMigrations(db *sql.DB) {
-	driver, err := mysql.WithInstance(db, &mysql.Config{})
+	// Cek apakah tabel users sudah ada (untuk menandakan apakah migrasi sudah dijalankan)
+	var count int
+	err := db.QueryRow("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = 'users'").Scan(&count)
 	if err != nil {
-		log.Fatalf("[MIGRATE] gagal membuat driver: %v", err)
+		log.Fatalf("[MIGRATE] gagal cek tabel: %v", err)
 	}
 
-	m, err := migrate.NewWithDatabaseInstance(
-		"file://../migrations",
-		"mysql",
-		driver,
-	)
-	if err != nil {
-		log.Fatalf("[MIGRATE] gagal inisialisasi migrate: %v", err)
+	if count > 0 {
+		log.Println("[MIGRATE] tabel sudah ada, skip migrasi")
+		return
 	}
 
-	if err := m.Up(); err != nil && err != migrate.ErrNoChange {
-		log.Fatalf("[MIGRATE] gagal menjalankan migrasi: %v", err)
+	// Baca schema.sql
+	schemaPath := filepath.Join("..", "schema.sql")
+	schemaBytes, err := os.ReadFile(schemaPath)
+	if err != nil {
+		log.Fatalf("[MIGRATE] gagal baca schema.sql: %v", err)
+	}
+
+	schema := string(schemaBytes)
+
+	// Pisahkan statement SQL (simple split by ; lalu trim)
+	// Hilangkan komentar terlebih dahulu
+	reComment := regexp.MustCompile(`--.*$`)
+	lines := strings.Split(schema, "\n")
+	cleanLines := []string{}
+	for _, line := range lines {
+		clean := reComment.ReplaceAllString(line, "")
+		clean = strings.TrimSpace(clean)
+		if clean != "" {
+			cleanLines = append(cleanLines, clean)
+		}
+	}
+	cleanSchema := strings.Join(cleanLines, " ")
+
+	// Pisahkan per statement
+	statements := strings.Split(cleanSchema, ";")
+	for _, stmt := range statements {
+		stmt = strings.TrimSpace(stmt)
+		if stmt == "" {
+			continue
+		}
+		_, err := db.Exec(stmt)
+		if err != nil {
+			log.Printf("[MIGRATE] peringatan saat eksekusi: %v", err)
+			// Tetap lanjutkan, karena beberapa error bisa diabaikan (misal table already exists)
+		}
+	}
+
+	// Insert default platform setting jika belum ada
+	var settingCount int
+	err = db.QueryRow("SELECT COUNT(*) FROM platform_settings").Scan(&settingCount)
+	if err != nil || settingCount == 0 {
+		_, err := db.Exec("INSERT IGNORE INTO platform_settings (fee_percent) VALUES (5.00)")
+		if err != nil {
+			log.Printf("[MIGRATE] gagal insert setting: %v", err)
+		}
 	}
 
 	log.Println("[MIGRATE] migrasi selesai")

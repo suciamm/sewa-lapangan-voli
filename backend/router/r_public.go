@@ -40,8 +40,8 @@ func ApiPublic(r *gin.RouterGroup) {
 	r.POST("/auth/refresh", auth.RefreshTokenController)
 	r.POST("/payments/webhook", payments.MidtransWebhookController)
 	r.GET("/courts", courts.ListCourtsController)
+	r.GET("/courts/:id/reviews", reviews.ListCourtReviewsController)
 	r.GET("/courts/:id", courts.GetCourtController)
-	r.GET("/courts/:court_id/reviews", reviews.ListCourtReviewsController)
 }
 
 func ApiProtected(r *gin.RouterGroup) {
@@ -49,6 +49,8 @@ func ApiProtected(r *gin.RouterGroup) {
 	r.GET("/notifications", notifications.ListNotificationsController)
 	r.PUT("/notifications/:id/read", notifications.MarkNotificationReadController)
 	r.PUT("/notifications/read-all", notifications.MarkAllNotificationsReadController)
+	r.GET("/bookings/:id", bookings.GetBookingController)
+	r.PUT("/bookings/:id/status", bookings.UpdateBookingStatusController)
 }
 
 func ApiSuperuser(r *gin.RouterGroup) {
@@ -61,16 +63,12 @@ func ApiOwner(r *gin.RouterGroup) {
 	r.PUT("/courts/:id", courts.UpdateCourtController)
 	r.DELETE("/courts/:id", courts.DeleteCourtController)
 	r.POST("/courts/:id/images", courts.AddCourtImageController)
-	r.GET("/my-bookings", bookings.ListOwnerBookingsController)
-	r.GET("/bookings/:id", bookings.GetBookingController)
-	r.PUT("/bookings/:id/status", bookings.UpdateBookingStatusController)
+	r.GET("/owner/bookings", bookings.ListOwnerBookingsController)
 }
 
 func ApiPenyewa(r *gin.RouterGroup) {
 	r.POST("/bookings", bookings.CreateBookingController)
-	r.GET("/my-bookings", bookings.ListPenyewaBookingsController)
-	r.GET("/bookings/:id", bookings.GetBookingController)
-	r.PUT("/bookings/:id/status", bookings.UpdateBookingStatusController)
+	r.GET("/penyewa/bookings", bookings.ListPenyewaBookingsController)
 	r.POST("/payments", payments.CreatePaymentController)
 	r.GET("/payments/:id", payments.GetPaymentController)
 	r.POST("/reviews", reviews.CreateReviewController)

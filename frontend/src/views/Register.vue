@@ -12,6 +12,14 @@
           <input type="email" v-model="form.email" required>
         </div>
         <div class="form-group">
+          <label>Role</label>
+          <select v-model="form.role" required>
+            <option value="">Pilih Role</option>
+            <option value="owner">Pemilik Lapangan</option>
+            <option value="penyewa">Penyewa Lapangan</option>
+          </select>
+        </div>
+        <div class="form-group">
           <label>Password</label>
           <input type="password" v-model="form.password" required>
         </div>
@@ -42,6 +50,7 @@ const authStore = useAuthStore()
 const form = ref({
   name: '',
   email: '',
+  role: '',
   password: '',
   confirmPassword: ''
 })
@@ -58,10 +67,13 @@ const handleRegister = async () => {
     const response = await api.post('/auth/register', {
       name: form.value.name,
       email: form.value.email,
-      password: form.value.password
+      password: form.value.password,
+      role: form.value.role
     })
-    authStore.setAuth(response.data.data.token, response.data.data.user)
-    router.push('/')
+    // Note: register returns UserResponse, no token, so we need to login automatically
+    // Let's just redirect to login
+    alert('Registrasi berhasil! Silakan login')
+    router.push('/login')
   } catch (error) {
     alert('Daftar gagal: ' + (error.response?.data?.message || error.message))
   } finally {
@@ -107,16 +119,17 @@ const handleRegister = async () => {
   font-weight: 500;
 }
 
-.form-group input {
+.form-group input, .form-group select {
   width: 100%;
   padding: 1rem;
   border: 2px solid #e2e8f0;
   border-radius: 10px;
   font-size: 1rem;
   transition: all 0.3s ease;
+  background: white;
 }
 
-.form-group input:focus {
+.form-group input:focus, .form-group select:focus {
   outline: none;
   border-color: #ff6b35;
   box-shadow: 0 0 0 3px rgba(255, 107, 53, 0.1);

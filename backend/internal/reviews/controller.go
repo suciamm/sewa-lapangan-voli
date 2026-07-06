@@ -30,7 +30,7 @@ func CreateReviewController(c *gin.Context) {
 }
 
 func ListCourtReviewsController(c *gin.Context) {
-	courtID, err := strconv.ParseInt(c.Param("court_id"), 10, 64)
+	courtID, err := strconv.ParseInt(c.Param("id"), 10, 64)
 	if err != nil {
 		config.RespondError(c, http.StatusBadRequest, "ID tidak valid")
 		return
